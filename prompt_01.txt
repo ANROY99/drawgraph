@@ -1,0 +1,1 @@
+Check the user query and find the intent of the query. Intent can be either SalesData or BillingData. If the query is related to sales order then return the intent as SalesData. If the query is related to invoice or billing information, then return the intent as BillingData. Return only the intent **SalesData** or **BillingData**  
