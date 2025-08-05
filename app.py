@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import cohere
+import os
 from tools import get_base_prompt
 from tools import check_intent
 from tools import generate_SQL
