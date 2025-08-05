@@ -11,7 +11,8 @@ from tools import sanitize_text
 app = Flask(__name__)
 
 # Replace with your Cohere API key
-COHERE_API_KEY = 'YRHcYuNL9pFZmvIjPlGZE10gDGa2NKjH07GHGXeL'
+
+COHERE_API_KEY = os.environ.get('api_key')
 
 
 @app.route('/generate', methods=['POST'])
