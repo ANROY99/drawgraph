@@ -40,12 +40,14 @@ def generate_text():
 
         l_output_data = execute_query(l_validated_output)
 
+        l_sanitized_output = sanitize_text(l_output_data)
+
         # Return the result along with the user session and input text
         return jsonify({
             'usersession': user_session,
             'inputtext':input_text,
-            'generated_text': l_validated_output,
-            'output_data' : l_output_data 
+            'generated_sql': l_validated_output,
+            'output_data' : l_sanitized_output 
         })
 
     except Exception as e:
