@@ -6,6 +6,7 @@ from tools import check_intent
 from tools import generate_SQL
 from tools import validate_output
 from tools import sanitize_text
+from tools import execute_query
 
 
 # Initialize Flask app
@@ -14,6 +15,7 @@ app = Flask(__name__)
 # Replace with your Cohere API key
 
 COHERE_API_KEY = os.environ.get('api_key')
+#COHERE_API_KEY = 'YRHcYuNL9pFZmvIjPlGZE10gDGa2NKjH07GHGXeL'
 
 
 @app.route('/generate', methods=['POST'])
@@ -36,11 +38,14 @@ def generate_text():
         
         l_validated_output = sanitize_text(l_generated_SQL)
 
+        l_output_data = execute_query(l_validated_output)
+
         # Return the result along with the user session and input text
         return jsonify({
             'usersession': user_session,
             'inputtext':input_text,
-            'generated_text': l_validated_output
+            'generated_text': l_validated_output,
+            'output_data' : l_output_data 
         })
 
     except Exception as e:

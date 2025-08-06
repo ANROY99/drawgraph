@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 import cohere
+import http.client
+import json
 
 def get_base_prompt(file_path):
     
@@ -104,3 +106,15 @@ def sanitize_text(text):
         print("No formatting characters found.")
 
     return text
+
+
+def execute_query(p_in_query):
+    conn = http.client.HTTPSConnection("GB55491B372E79A-ANINDYAATP23AI.adb.us-chicago-1.oraclecloudapps.com")
+    payload = {"query_string": p_in_query}
+    json_payload = json.dumps(payload)
+    headers = {'Content-Type': 'application/json'}
+    conn.request("POST", "/ords/app/rest-v6/user_query/", json_payload, headers)
+    res = conn.getresponse()
+    data = res.read()
+    extracted_data = (data.decode("utf-8"))
+    return extracted_data
