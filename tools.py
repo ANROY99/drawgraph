@@ -2,6 +2,9 @@ from flask import Flask, request, jsonify
 import cohere
 import http.client
 import json
+import pandas as pd
+import openpyxl
+from openpyxl import Workbook
 
 def get_base_prompt(file_path):
     
@@ -118,3 +121,29 @@ def execute_query(p_in_query):
     data = res.read()
     extracted_data = (data.decode("utf-8"))
     return extracted_data
+
+def generate_excel(p_in_user_session,p_in_result,p_in_sql_text):
+
+    # Parse the string into a Python list of dictionaries
+    order_list = json.loads(p_in_result)
+
+
+    # Convert to a DataFrame
+    df = pd.DataFrame(order_list)
+
+    l_filename = "data_"+str(p_in_user_session)+".xlsx"
+
+
+    # Save to Excel
+    #df.to_excel(l_filename,sheet_name='Result', index=False)
+
+    with pd.ExcelWriter(l_filename) as writer:
+        df.to_excel(writer, sheet_name="Data", index=False)
+        # Put SQL text in a DataFrame so it can be written as a single-column sheet
+        pd.DataFrame([p_in_sql_text]).to_excel(writer, sheet_name="SQL", index=False, header=False)
+
+    
+
+    return "File created"
+
+    

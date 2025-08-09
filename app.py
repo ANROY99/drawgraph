@@ -7,6 +7,10 @@ from tools import generate_SQL
 from tools import validate_output
 from tools import sanitize_text
 from tools import execute_query
+from tools import generate_excel
+import pandas as pd
+import openpyxl
+from openpyxl import Workbook
 
 
 # Initialize Flask app
@@ -41,6 +45,8 @@ def generate_text():
         l_output_data = execute_query(l_validated_output)
 
         l_sanitized_output = sanitize_text(l_output_data)
+
+        l_msg = generate_excel(user_session,l_sanitized_output,l_validated_output)
 
         # Return the result along with the user session and input text
         return jsonify({
