@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
+import requests
 import cohere
 import http.client
 import json
 import pandas as pd
 import openpyxl
 from openpyxl import Workbook
+import base64
 
 def get_base_prompt(file_path):
     
@@ -142,8 +144,27 @@ def generate_excel(p_in_user_session,p_in_result,p_in_sql_text):
         # Put SQL text in a DataFrame so it can be written as a single-column sheet
         pd.DataFrame([p_in_sql_text]).to_excel(writer, sheet_name="SQL", index=False, header=False)
 
+    with open(l_filename, "rb") as file:
+        encoded_bytes = base64.b64encode(file.read())
     
+    UCMDocId = upload_result(encoded_bytes.decode("utf-8"),l_filename)
+ 
+    return UCMDocId
 
-    return "File created"
 
-    
+def upload_result(p_in_base64_excel,p_in_filename):
+
+    url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/fscmRestApi/resources/11.13.18.05/erpintegrations"
+
+    payload = json.dumps({"OperationName": "uploadFileToUCM","DocumentContent":p_in_base64_excel,"DocumentAccount": "fin$/payables$/import$","ContentType": "xlsx","FileName": p_in_filename,"DocumentId": None})
+    headers = {'Content-Type': 'application/json','Authorization': 'Basic YW5pbmR5YS5yQHRjcy5jb206S29sa2F0YUA5OQ=='}
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+
+    json_data = json.loads(response.text)
+
+    document_id = json_data["DocumentId"]
+
+    return (document_id)
+
+

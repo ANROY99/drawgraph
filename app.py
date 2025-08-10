@@ -11,6 +11,7 @@ from tools import generate_excel
 import pandas as pd
 import openpyxl
 from openpyxl import Workbook
+import base64
 
 
 # Initialize Flask app
@@ -46,14 +47,14 @@ def generate_text():
 
         l_sanitized_output = sanitize_text(l_output_data)
 
-        l_msg = generate_excel(user_session,l_sanitized_output,l_validated_output)
+        l_UCMDocId = generate_excel(user_session,l_sanitized_output,l_validated_output)
 
         # Return the result along with the user session and input text
         return jsonify({
             'usersession': user_session,
             'inputtext':input_text,
             'generated_sql': l_validated_output,
-            'output_data' : l_sanitized_output 
+            'UCMDocId' : l_UCMDocId 
         })
 
     except Exception as e:
