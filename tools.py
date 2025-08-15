@@ -7,6 +7,11 @@ import pandas as pd
 import openpyxl
 from openpyxl import Workbook
 import base64
+import xml.etree.ElementTree as ET
+from urllib.parse import unquote
+
+l_did = 0
+
 
 def get_base_prompt(file_path):
     
@@ -133,7 +138,7 @@ def generate_excel(p_in_user_session,p_in_result,p_in_sql_text):
     # Convert to a DataFrame
     df = pd.DataFrame(order_list)
 
-    l_filename = "data_"+str(p_in_user_session)+".xlsx"
+    l_filename = "ORDdata_"+str(p_in_user_session)+".xlsx"
 
 
     # Save to Excel
@@ -148,11 +153,25 @@ def generate_excel(p_in_user_session,p_in_result,p_in_sql_text):
         encoded_bytes = base64.b64encode(file.read())
     
     UCMDocId = upload_result(encoded_bytes.decode("utf-8"),l_filename)
+
+    did = UCMDocId
  
     return UCMDocId
 
 
 def upload_result(p_in_base64_excel,p_in_filename):
+
+    print('Here5')
+
+    l_did = check_UCMfile(p_in_filename)
+    
+    print('Here6')
+    
+    print(l_did)
+    
+    if l_did is not None:
+        l_del_response = delete_UCMfile(l_did)
+        print(l_del_response)
 
     url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/fscmRestApi/resources/11.13.18.05/erpintegrations"
 
@@ -160,11 +179,190 @@ def upload_result(p_in_base64_excel,p_in_filename):
     headers = {'Content-Type': 'application/json','Authorization': 'Basic YW5pbmR5YS5yQHRjcy5jb206S29sa2F0YUA5OQ=='}
 
     response = requests.request("POST", url, headers=headers, data=payload)
-
+    
     json_data = json.loads(response.text)
 
     document_id = json_data["DocumentId"]
+    
+    l_url = get_doc_url(document_id)
 
-    return (document_id)
+    return (l_url)
 
 
+def delete_UCMfile(did):
+    
+    url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/idcws/GenericSoapPort"
+    headers = {
+        "Content-Type": "text/xml; charset=utf-8"
+    }
+
+    # Construct the SOAP XML payload
+    payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+      <soap:Body xmlns:ns1="http://www.oracle.com/UCM">
+        <ns1:GenericRequest webKey="cs">
+          <ns1:Service IdcService="DELETE_DOC">
+            <ns1:User></ns1:User>
+            <ns1:Document>
+              <ns1:Field name="dID">{did}</ns1:Field>
+            </ns1:Document>
+          </ns1:Service>
+        </ns1:GenericRequest>
+      </soap:Body>
+    </soap:Envelope>"""
+
+    print(payload)
+
+    # Send the POST request with basic authentication
+    response = requests.post(url, data=payload, headers=headers, auth=("anindya.r@tcs.com", "Kolkata@99"))
+
+    # Return response status and content
+    return {
+        "response_text": response.status_code
+    }
+
+
+def check_UCMfile(p_in_filename):
+
+    did = None
+    
+    url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/idcws/GenericSoapPort"
+    l_filedID = 0
+    headers = {
+        "Content-Type": "text/xml; charset=utf-8"
+    }
+
+    # Construct the SOAP XML payload
+    payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+      <soap:Body xmlns:ns1="http://www.oracle.com/UCM">
+        <ns1:GenericRequest webKey="cs">
+          <ns1:Service IdcService="GET_SEARCH_RESULTS">
+            <ns1:User></ns1:User>
+            <ns1:Document>
+              <ns1:Field name="QueryText">&lt;qsch&gt;{p_in_filename}&lt;/qsch&gt;</ns1:Field>
+            </ns1:Document>
+          </ns1:Service>
+        </ns1:GenericRequest>
+      </soap:Body>
+    </soap:Envelope>"""
+
+    #print(payload)
+
+    # Send the POST request with basic authentication
+    soap_response = requests.post(url, data=payload, headers=headers, auth=("anindya.r@tcs.com", "Kolkata@99"))
+
+    soap_message = soap_response.content
+    
+    xml_content = soap_message.decode('utf-8')
+    
+    # Remove MIME headers to isolate the XML content
+    xml_start = xml_content.find('<env:Envelope')
+    
+    xml_end = xml_content.find('</env:Envelope>') + len('</env:Envelope>')
+    
+    xml_content = xml_content[xml_start:xml_end]
+    
+    #print(xml_content)
+    print('Here7')
+
+    root = ET.fromstring(xml_content)
+    namespace = {'ns0': 'http://www.oracle.com/UCM', 'env': 'http://schemas.xmlsoap.org/soap/envelope/'}
+    
+    print('Here8')
+    
+    total_rows = 0
+    
+    total_rows_element = root.find('.//ns0:Field[@name="TotalRows"]', namespace)
+    
+    print('Here9'+total_rows_element.text)
+    
+    total_rows = int(total_rows_element.text)
+    print('Total Rows : '+str(total_rows))
+        
+    
+    
+        
+    if (total_rows > 0):
+        
+        # Extract dID (assuming it's in a ResultSet)
+        did = None
+        did_element = root.find('.//ns0:Field[@name="dID"]', namespace)
+        if did_element is not None:
+            did = did_element.text
+    
+
+    print(str(did))
+
+    # Return response status and content
+    return did
+
+def get_doc_url(p_in_did):
+    # SOAP API endpoint
+    url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/idcws/GenericSoapPort"
+    
+    # SOAP request payload template
+    payload_template = """
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+        <soap:Body xmlns:ns1="http://www.oracle.com/UCM">
+            <ns1:GenericRequest webKey="cs">
+                <ns1:Service IdcService="DOC_INFO">
+                    <ns1:User></ns1:User>
+                    <ns1:Document><ns1:Field name="dID">{did}</ns1:Field></ns1:Document>
+                </ns1:Service>
+            </ns1:GenericRequest>
+        </soap:Body>
+    </soap:Envelope>
+    """
+    
+    # Replace {did} with the input parameter
+    payload = payload_template.format(did=p_in_did)
+    
+    #print(payload)
+    
+    # Headers for SOAP request
+    headers = {
+        "Content-Type": "text/xml; charset=utf-8"
+    }
+    
+    try:
+        # Send SOAP request
+        soap_response = requests.post(url, data=payload, headers=headers, auth=("anindya.r@tcs.com", "Kolkata@99"))
+        print('Here13')
+                
+        soap_message = soap_response.content
+    
+        xml_content = soap_message.decode('utf-8')
+    
+        # Remove MIME headers to isolate the XML content
+        xml_start = xml_content.find('<env:Envelope')
+    
+        xml_end = xml_content.find('</env:Envelope>') + len('</env:Envelope>')
+    
+        xml_content = xml_content[xml_start:xml_end]
+    
+        #print(xml_content)
+        print('Here7')
+         
+        soap_response.raise_for_status()  # Raise an exception for HTTP errors
+        
+        # Parse the XML response
+        root = ET.fromstring(xml_content)
+        
+        # Find the DocUrl field in the response
+        doc_url = root.find(".//ns0:Field[@name='DocUrl']", namespaces={"ns0": "http://www.oracle.com/UCM"})
+        
+        if doc_url is not None:
+            decoded_url = unquote(doc_url.text)
+            new_prefix = 'https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com'
+            common_path_start = decoded_url.find('/cs/groups/fafusionimportexport/')
+            if common_path_start != -1:
+                decoded_url = new_prefix + decoded_url[common_path_start:]
+            decoded_url = decoded_url.replace('~1.xlsx', '.xlsx')
+            return decoded_url
+        else:
+            return None
+        
+    except requests.RequestException as e:
+        print(f"Error invoking SOAP API: {e}")
+        return None
