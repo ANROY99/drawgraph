@@ -24,7 +24,10 @@ app = Flask(__name__)
 # Replace with your Cohere API key
 
 COHERE_API_KEY = os.environ.get('api_key')
-#COHERE_API_KEY = 'YRHcYuNL9pFZmvIjPlGZE10gDGa2NKjH07GHGXeL'
+APPS_USERNAME = os.environ.get('apps_uname')
+APPS_PASSWORD = os.environ.get('apps_pwd')
+APPS_BASICAUTH = os.environ.get('basic_auth')
+
 
 
 
@@ -68,7 +71,7 @@ def generate_text():
         #l_delete_sts = delete_UCMfile(l_UCMDocId)
         l_delete_sts = 'OK'
 
-        l_UCMDocId = generate_excel(user_session,l_sanitized_output,l_validated_output)
+        l_UCMDocId = generate_excel(user_session,l_sanitized_output,l_validated_output,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
         
         
 

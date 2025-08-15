@@ -129,7 +129,7 @@ def execute_query(p_in_query):
     extracted_data = (data.decode("utf-8"))
     return extracted_data
 
-def generate_excel(p_in_user_session,p_in_result,p_in_sql_text):
+def generate_excel(p_in_user_session,p_in_result,p_in_sql_text,p_in_basicauth,p_in_uname,p_in_pwd):
 
     # Parse the string into a Python list of dictionaries
     order_list = json.loads(p_in_result)
@@ -152,31 +152,32 @@ def generate_excel(p_in_user_session,p_in_result,p_in_sql_text):
     with open(l_filename, "rb") as file:
         encoded_bytes = base64.b64encode(file.read())
     
-    UCMDocId = upload_result(encoded_bytes.decode("utf-8"),l_filename)
+    UCMDocId = upload_result(encoded_bytes.decode("utf-8"),l_filename,p_in_basicauth,p_in_uname,p_in_pwd)
 
     did = UCMDocId
  
     return UCMDocId
 
 
-def upload_result(p_in_base64_excel,p_in_filename):
+def upload_result(p_in_base64_excel,p_in_filename,p_basic_auth,p_in_uname,p_in_pwd):
 
     print('Here5')
 
-    l_did = check_UCMfile(p_in_filename)
+    l_did = check_UCMfile(p_in_filename,p_in_uname,p_in_pwd)
     
     print('Here6')
     
     print(l_did)
     
     if l_did is not None:
-        l_del_response = delete_UCMfile(l_did)
+        l_del_response = delete_UCMfile(l_did,p_in_uname,p_in_pwd)
         print(l_del_response)
 
     url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/fscmRestApi/resources/11.13.18.05/erpintegrations"
 
     payload = json.dumps({"OperationName": "uploadFileToUCM","DocumentContent":p_in_base64_excel,"DocumentAccount": "fin$/payables$/import$","ContentType": "xlsx","FileName": p_in_filename,"DocumentId": None})
-    headers = {'Content-Type': 'application/json','Authorization': 'Basic YW5pbmR5YS5yQHRjcy5jb206S29sa2F0YUA5OQ=='}
+    #headers = {'Content-Type': 'application/json','Authorization': 'Basic YW5pbmR5YS5yQHRjcy5jb206S29sa2F0YUA5OQ=='}
+    headers = {'Content-Type': 'application/json','Authorization': p_basic_auth}
 
     response = requests.request("POST", url, headers=headers, data=payload)
     
@@ -184,12 +185,12 @@ def upload_result(p_in_base64_excel,p_in_filename):
 
     document_id = json_data["DocumentId"]
     
-    l_url = get_doc_url(document_id)
+    l_url = get_doc_url(document_id,p_in_uname,p_in_pwd)
 
     return (l_url)
 
 
-def delete_UCMfile(did):
+def delete_UCMfile(did,p_in_uname,p_in_pwd):
     
     url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/idcws/GenericSoapPort"
     headers = {
@@ -214,7 +215,7 @@ def delete_UCMfile(did):
     print(payload)
 
     # Send the POST request with basic authentication
-    response = requests.post(url, data=payload, headers=headers, auth=("anindya.r@tcs.com", "Kolkata@99"))
+    response = requests.post(url, data=payload, headers=headers, auth=(p_in_uname, p_in_pwd))
 
     # Return response status and content
     return {
@@ -222,7 +223,7 @@ def delete_UCMfile(did):
     }
 
 
-def check_UCMfile(p_in_filename):
+def check_UCMfile(p_in_filename,p_in_uname,p_in_pwd):
 
     did = None
     
@@ -250,7 +251,7 @@ def check_UCMfile(p_in_filename):
     #print(payload)
 
     # Send the POST request with basic authentication
-    soap_response = requests.post(url, data=payload, headers=headers, auth=("anindya.r@tcs.com", "Kolkata@99"))
+    soap_response = requests.post(url, data=payload, headers=headers, auth=(p_in_uname,p_in_pwd))
 
     soap_message = soap_response.content
     
@@ -297,7 +298,7 @@ def check_UCMfile(p_in_filename):
     # Return response status and content
     return did
 
-def get_doc_url(p_in_did):
+def get_doc_url(p_in_did,p_in_uname,p_in_pwd):
     # SOAP API endpoint
     url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/idcws/GenericSoapPort"
     
@@ -327,7 +328,7 @@ def get_doc_url(p_in_did):
     
     try:
         # Send SOAP request
-        soap_response = requests.post(url, data=payload, headers=headers, auth=("anindya.r@tcs.com", "Kolkata@99"))
+        soap_response = requests.post(url, data=payload, headers=headers, auth=(p_in_uname,p_in_pwd))
         print('Here13')
                 
         soap_message = soap_response.content
