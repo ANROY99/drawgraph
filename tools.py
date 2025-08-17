@@ -9,6 +9,9 @@ from openpyxl import Workbook
 import base64
 import xml.etree.ElementTree as ET
 from urllib.parse import unquote
+import sys
+import subprocess
+import matplotlib
 
 l_did = 0
 
@@ -50,7 +53,34 @@ def check_intent(input_text,p_api_key):
 
     generated_text = response.message.content[0].text.strip()
     return generated_text
+    
+def check_graphtype(input_text,p_in_sql,p_api_key):
+    BASE_PROMPT_FILE_PATH = 'prompt_04.txt'
+    output_text = ''
+    base_prompt = get_base_prompt(BASE_PROMPT_FILE_PATH)
+    final_prompt = f"{base_prompt}\n{output_text}" if base_prompt else output_text
+    final_prompt = final_prompt + '\n The user query is as follows :'+input_text
+    final_prompt = f"{final_prompt}\n{output_text}"+'The SQL statement provided is as follows :\n'+p_in_sql
 
+    co = cohere.ClientV2(api_key=p_api_key)
+    
+    # Use output_text as the prompt for Cohere API
+    response = co.chat(
+        model="command-a-03-2025",
+        messages=[
+                   {
+                     "role": "user",
+                     "content": final_prompt
+                   }
+                 ]
+    )
+
+    generated_text = response.message.content[0].text.strip()
+    
+    print(generated_text)
+        
+    return generated_text
+    
 
 def generate_SQL(input_text,p_api_key):
 
@@ -161,13 +191,13 @@ def generate_excel(p_in_user_session,p_in_result,p_in_sql_text,p_in_basicauth,p_
 
 def upload_result(p_in_base64_excel,p_in_filename,p_basic_auth,p_in_uname,p_in_pwd):
 
-    print('Here5')
+    #print('Here5')
 
     l_did = check_UCMfile(p_in_filename,p_in_uname,p_in_pwd)
     
-    print('Here6')
+    #print('Here6')
     
-    print(l_did)
+    #print(l_did)
     
     if l_did is not None:
         l_del_response = delete_UCMfile(l_did,p_in_uname,p_in_pwd)
@@ -188,6 +218,7 @@ def upload_result(p_in_base64_excel,p_in_filename,p_basic_auth,p_in_uname,p_in_p
     l_url = get_doc_url(document_id,p_in_uname,p_in_pwd)
 
     return (l_url)
+
 
 
 def delete_UCMfile(did,p_in_uname,p_in_pwd):
@@ -212,7 +243,7 @@ def delete_UCMfile(did,p_in_uname,p_in_pwd):
       </soap:Body>
     </soap:Envelope>"""
 
-    print(payload)
+    #print(payload)
 
     # Send the POST request with basic authentication
     response = requests.post(url, data=payload, headers=headers, auth=(p_in_uname, p_in_pwd))
@@ -265,21 +296,21 @@ def check_UCMfile(p_in_filename,p_in_uname,p_in_pwd):
     xml_content = xml_content[xml_start:xml_end]
     
     #print(xml_content)
-    print('Here7')
+    #print('Here7')
 
     root = ET.fromstring(xml_content)
     namespace = {'ns0': 'http://www.oracle.com/UCM', 'env': 'http://schemas.xmlsoap.org/soap/envelope/'}
     
-    print('Here8')
+    #print('Here8')
     
     total_rows = 0
     
     total_rows_element = root.find('.//ns0:Field[@name="TotalRows"]', namespace)
     
-    print('Here9'+total_rows_element.text)
+    #print('Here9'+total_rows_element.text)
     
     total_rows = int(total_rows_element.text)
-    print('Total Rows : '+str(total_rows))
+    #print('Total Rows : '+str(total_rows))
         
     
     
@@ -293,7 +324,7 @@ def check_UCMfile(p_in_filename,p_in_uname,p_in_pwd):
             did = did_element.text
     
 
-    print(str(did))
+    #print(str(did))
 
     # Return response status and content
     return did
@@ -343,7 +374,7 @@ def get_doc_url(p_in_did,p_in_uname,p_in_pwd):
         xml_content = xml_content[xml_start:xml_end]
     
         #print(xml_content)
-        print('Here7')
+        #print('Here7')
          
         soap_response.raise_for_status()  # Raise an exception for HTTP errors
         
@@ -367,3 +398,56 @@ def get_doc_url(p_in_did,p_in_uname,p_in_pwd):
     except requests.RequestException as e:
         print(f"Error invoking SOAP API: {e}")
         return None
+        
+        
+def gen_bargraph_script(p_in_result,p_in_user_session,p_api_key,p_basic_auth,p_in_uname,p_in_pwd):
+
+    # Path to the local file containing the base prompt (optional)
+    BASE_PROMPT_FILE_PATH = 'prompt_05.txt'
+    output_text = ''
+
+    base_prompt = get_base_prompt(BASE_PROMPT_FILE_PATH)
+    final_prompt = f"{base_prompt}\n{output_text}" if base_prompt else output_text
+    final_prompt = final_prompt + '. The data is as follows :'+p_in_result
+    final_prompt = final_prompt + '.\n The file name should be as follows :'+'ORDI'+str(p_in_user_session)+'.jpg'
+    print(final_prompt)
+    
+    l_imagefile = 'ORDI'+str(p_in_user_session)+'.jpg'
+    
+    co = cohere.ClientV2(api_key=p_api_key)
+    
+    # Use output_text as the prompt for Cohere API
+    response = co.chat(
+        model="command-a-03-2025",
+        messages=[
+                   {
+                     "role": "user",
+                     "content": final_prompt
+                   }
+                 ]
+    )
+
+    generated_text = response.message.content[0].text.strip()
+    
+    print(generated_text)
+    
+    l_scriptfile = 'ORDS'+str(p_in_user_session)+'.py'
+    
+    
+    
+    with open(l_scriptfile, 'w') as file:
+        file.write(generated_text)
+    
+    python_executable = sys.executable
+    subprocess.run([python_executable, l_scriptfile])
+    
+    with open(l_imagefile, "rb") as file:
+        encoded_bytes = base64.b64encode(file.read())
+    
+    UCMurl = upload_result(encoded_bytes.decode("utf-8"),l_imagefile,p_basic_auth,p_in_uname,p_in_pwd)
+    
+    UCMurl = UCMurl.replace('~1.jpg', '.jpg')
+    
+    print(UCMurl)
+    
+    return UCMurl

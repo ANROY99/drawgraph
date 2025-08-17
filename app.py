@@ -10,6 +10,8 @@ from tools import execute_query
 from tools import generate_excel
 from tools import delete_UCMfile
 from tools import get_doc_url
+from tools import check_graphtype
+from tools import gen_bargraph_script
 import pandas as pd
 import openpyxl
 from openpyxl import Workbook
@@ -50,39 +52,59 @@ def generate_text():
 
         l_intent = check_intent(input_text,COHERE_API_KEY)
       
-        print('Here1')
+        print(l_intent)
       
-        l_generated_SQL = generate_SQL(input_text,COHERE_API_KEY)
+        if l_intent == "**SalesData**":
+      
+            l_generated_SQL = generate_SQL(input_text,COHERE_API_KEY)
         
-        print('Here2')
+            print(l_generated_SQL)
+            
+            check_graphtype(input_text,l_generated_SQL,COHERE_API_KEY)
         
-        l_validated_output = sanitize_text(l_generated_SQL)
+            l_validated_output = sanitize_text(l_generated_SQL)
 
-        print('Here3')
+            print('Here3')
 
-        l_output_data = execute_query(l_validated_output)
+            l_output_data = execute_query(l_validated_output)
 
-        print('Here4')
+            #print('Here4')
 
-        l_sanitized_output = sanitize_text(l_output_data)
+            l_sanitized_output = sanitize_text(l_output_data)
 
-        print(l_UCMDocId)
+            print(l_sanitized_output)
 
-        #l_delete_sts = delete_UCMfile(l_UCMDocId)
-        l_delete_sts = 'OK'
+            #l_delete_sts = delete_UCMfile(l_UCMDocId)
+            l_delete_sts = 'OK'
 
-        l_UCMDocId = generate_excel(user_session,l_sanitized_output,l_validated_output,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
+            l_dataURL = generate_excel(user_session,l_sanitized_output,l_validated_output,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
         
-        
+            l_imageURL = gen_bargraph_script(l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
+            
 
-        # Return the result along with the user session and input text
-        return jsonify({
-            'usersession': user_session,
-            'inputtext':input_text,
-            'generated_sql': l_validated_output,
-            'UCMDocId' : l_UCMDocId,
-            'UCMdelSts' : l_delete_sts
-        })
+            # Return the result along with the user session and input text
+            return jsonify({
+                'usersession': user_session,
+                'inputtext':input_text,
+                'generated_sql': l_validated_output,
+                'DataURL' : l_dataURL,
+                'UCMdelSts' : l_delete_sts,
+                'ImageURL' : l_imageURL,
+                'ResponseText' : ''
+            })
+        
+        elif l_intent == "**BillingData**":
+            print("Processing Billingdata...")
+        else:
+            print("Unknown intent. Please check the value of l_intent.")
+            return jsonify({
+                'usersession': user_session,
+                'inputtext':'At present, the tool can handle only Sales Data or Billing Data related queries' ,
+                'generated_sql': '',
+                'UCMDocId' : '',
+                'UCMdelSts' : ''
+            })
+            
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
