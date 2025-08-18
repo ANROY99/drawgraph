@@ -161,6 +161,8 @@ def execute_query(p_in_query):
 
 def generate_excel(p_in_user_session,p_in_result,p_in_sql_text,p_in_basicauth,p_in_uname,p_in_pwd):
 
+    UCMDocId = ''
+    
     # Parse the string into a Python list of dictionaries
     order_list = json.loads(p_in_result)
 
@@ -405,6 +407,8 @@ def gen_bargraph_script(p_in_result,p_in_user_session,p_api_key,p_basic_auth,p_i
     # Path to the local file containing the base prompt (optional)
     BASE_PROMPT_FILE_PATH = 'prompt_05.txt'
     output_text = ''
+    UCMurl = ''
+
 
     base_prompt = get_base_prompt(BASE_PROMPT_FILE_PATH)
     final_prompt = f"{base_prompt}\n{output_text}" if base_prompt else output_text
@@ -450,4 +454,60 @@ def gen_bargraph_script(p_in_result,p_in_user_session,p_api_key,p_basic_auth,p_i
     
     print(UCMurl)
     
-    return UCMurl
+    return (UCMurl)
+
+
+def gen_linechart_script(p_in_userquery,p_in_result,p_in_user_session,p_api_key,p_basic_auth,p_in_uname,p_in_pwd):
+
+    # Path to the local file containing the base prompt (optional)
+    BASE_PROMPT_FILE_PATH = 'prompt_06.txt'
+    output_text = ''
+    UCMurl = ''
+
+
+    base_prompt = get_base_prompt(BASE_PROMPT_FILE_PATH)
+    final_prompt = f"{base_prompt}\n{output_text}" if base_prompt else output_text
+    final_prompt = final_prompt + '. The data is as follows :'+p_in_result
+    final_prompt = final_prompt + '.\n Question based on which this data has been retrieved: '+p_in_userquery
+    final_prompt = final_prompt + '.\n The file name should be as follows :'+'ORDI'+str(p_in_user_session)+'.jpg'
+    print(final_prompt)
+    
+    l_imagefile = 'ORDI'+str(p_in_user_session)+'.jpg'
+    
+    co = cohere.ClientV2(api_key=p_api_key)
+    
+    # Use output_text as the prompt for Cohere API
+    response = co.chat(
+        model="command-a-03-2025",
+        messages=[
+                   {
+                     "role": "user",
+                     "content": final_prompt
+                   }
+                 ]
+    )
+
+    generated_text = response.message.content[0].text.strip()
+    
+    print(generated_text)
+    
+    l_scriptfile = 'ORDS'+str(p_in_user_session)+'.py'
+    
+    
+    
+    with open(l_scriptfile, 'w') as file:
+        file.write(generated_text)
+    
+    python_executable = sys.executable
+    subprocess.run([python_executable, l_scriptfile])
+    
+    with open(l_imagefile, "rb") as file:
+        encoded_bytes = base64.b64encode(file.read())
+    
+    UCMurl = upload_result(encoded_bytes.decode("utf-8"),l_imagefile,p_basic_auth,p_in_uname,p_in_pwd)
+    
+    UCMurl = UCMurl.replace('~1.jpg', '.jpg')
+    
+    print(UCMurl)
+    
+    return (UCMurl)

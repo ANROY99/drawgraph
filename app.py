@@ -12,6 +12,7 @@ from tools import delete_UCMfile
 from tools import get_doc_url
 from tools import check_graphtype
 from tools import gen_bargraph_script
+from tools import gen_linechart_script
 import pandas as pd
 import openpyxl
 from openpyxl import Workbook
@@ -30,7 +31,7 @@ APPS_USERNAME = os.environ.get('apps_uname')
 APPS_PASSWORD = os.environ.get('apps_pwd')
 APPS_BASICAUTH = os.environ.get('basic_auth')
 
-
+l_imageURL = ''
 
 
 
@@ -39,6 +40,7 @@ def generate_text():
     try:
 
         l_UCMDocId = 0
+        l_img_b64 = ''
         # Get JSON payload from the request
         data = request.get_json()
         user_session = data.get('usersession')
@@ -60,7 +62,9 @@ def generate_text():
         
             print(l_generated_SQL)
             
-            check_graphtype(input_text,l_generated_SQL,COHERE_API_KEY)
+            l_graph_response = check_graphtype(input_text,l_generated_SQL,COHERE_API_KEY)
+            
+            l_graph_type, l_description = l_graph_response.split(" | ", 1)
         
             l_validated_output = sanitize_text(l_generated_SQL)
 
@@ -78,9 +82,17 @@ def generate_text():
             l_delete_sts = 'OK'
 
             l_dataURL = generate_excel(user_session,l_sanitized_output,l_validated_output,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
-        
-            l_imageURL = gen_bargraph_script(l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
             
+            if (l_graph_type == '**VerticalBarGraph**'):
+        
+                l_imageURL = gen_bargraph_script(l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
+
+            if (l_graph_type == '**LineChart**'):
+                    
+                l_imageURL = gen_linechart_script(input_text,l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
+
+            if (l_graph_type == '**GraphNotApplicable**'):            
+                l_imageURL = ''
 
             # Return the result along with the user session and input text
             return jsonify({
@@ -90,7 +102,7 @@ def generate_text():
                 'DataURL' : l_dataURL,
                 'UCMdelSts' : l_delete_sts,
                 'ImageURL' : l_imageURL,
-                'ResponseText' : ''
+                'ResponseText' : l_description
             })
         
         elif l_intent == "**BillingData**":
@@ -108,6 +120,34 @@ def generate_text():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+        
+        
+@app.route('/getimage', methods=['POST'])
+def getimage():
+
+    try:
+        data = request.get_json()
+        user_session = data.get('usersession')
+        image_path = 'ORDI'+str(user_session)+'.jpg'
+        
+        with open(image_path, "rb") as image_file:
+            image_data = image_file.read()
+        
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+
+        #return Response(
+        #        img_io.getvalue(),
+        #        mimetype='image/jpg',
+        #        headers={'Content-Disposition': f'attachment; filename={user_id}_image.jpg'}
+        #    )
+        
+        return jsonify({
+            "image_base64": image_base64
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == "__main__":
 #    app.run(debug=True, host='0.0.0.0', port=5000)

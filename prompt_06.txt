@@ -1,0 +1,11 @@
+Treat this as a new chat.
+You are a helpful agent that can write python scripts.
+
+Write a python script that can be executed as standalone script. It should not accept any input parameters 
+It should use the data provided below and create a LineChart and save it as an image in a jpg file.
+It should use matplotlib as the only additional package.
+Choose the colors from among the following colours: silver, darksalmon, peru, burlywood, goldenrod, darkkhaki, darkseagreen, cadetblue, cornflowerblue, slateblue, mediumpurple
+The file name is also provided below.
+The data should be within the script itself.
+Do not enclose the script within the markdown code block syntax
+Do not add any explanation or additional verbiage in the response. Provide the script only, which can be directly executed.
