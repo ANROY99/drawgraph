@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 import cohere
 import os
 from tools import get_base_prompt
@@ -133,17 +133,13 @@ def getimage():
         with open(image_path, "rb") as image_file:
             image_data = image_file.read()
         
-        image_base64 = base64.b64encode(image_data).decode('utf-8')
-
-        #return Response(
-        #        img_io.getvalue(),
-        #        mimetype='image/jpg',
-        #        headers={'Content-Disposition': f'attachment; filename={user_id}_image.jpg'}
-        #    )
+        return Response(
+                image_data,
+                mimetype='image/jpg',
+                headers={'Content-Disposition': f'inline; filename={image_path}'}
+            )
         
-        return jsonify({
-            "image_base64": image_base64
-        })
+        
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
