@@ -429,7 +429,7 @@ def get_doc_url(p_in_did,p_in_uname,p_in_pwd,p_in_podurl):
         return None
         
         
-def gen_bargraph_script(p_in_result,p_in_user_session,p_api_key,p_basic_auth,p_in_uname,p_in_pwd):
+def gen_bargraph_script(p_in_result,p_in_user_session,p_api_key,p_basic_auth,p_in_uname,p_in_pwd,p_in_podurl):
 
     # Path to the local file containing the base prompt (optional)
     BASE_PROMPT_FILE_PATH = 'prompt_05.txt'
@@ -475,7 +475,7 @@ def gen_bargraph_script(p_in_result,p_in_user_session,p_api_key,p_basic_auth,p_i
     with open(l_imagefile, "rb") as file:
         encoded_bytes = base64.b64encode(file.read())
     
-    UCMurl = upload_result(encoded_bytes.decode("utf-8"),l_imagefile,p_basic_auth,p_in_uname,p_in_pwd)
+    UCMurl = upload_result(encoded_bytes.decode("utf-8"),l_imagefile,p_basic_auth,p_in_uname,p_in_pwd,p_in_podurl)
     
     UCMurl = UCMurl.replace('~1.jpg', '.jpg')
     
@@ -531,7 +531,7 @@ def gen_linechart_script(p_in_userquery,p_in_result,p_in_user_session,p_api_key,
     with open(l_imagefile, "rb") as file:
         encoded_bytes = base64.b64encode(file.read())
     
-    UCMurl = upload_result(encoded_bytes.decode("utf-8"),l_imagefile,p_basic_auth,p_in_uname,p_in_pwd)
+    UCMurl = upload_result(encoded_bytes.decode("utf-8"),l_imagefile,p_basic_auth,p_in_uname,p_in_pwd,p_in_podurl)
     
     UCMurl = UCMurl.replace('~1.jpg', '.jpg')
     
