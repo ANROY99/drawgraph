@@ -13,6 +13,7 @@ from tools import get_doc_url
 from tools import check_graphtype
 from tools import gen_bargraph_script
 from tools import gen_linechart_script
+from tools import get_ERP_data
 import pandas as pd
 import openpyxl
 from openpyxl import Workbook
@@ -30,6 +31,7 @@ COHERE_API_KEY = os.environ.get('api_key')
 APPS_USERNAME = os.environ.get('apps_uname')
 APPS_PASSWORD = os.environ.get('apps_pwd')
 APPS_BASICAUTH = os.environ.get('basic_auth')
+APPS_PODURL = os.environ.get('pod_url')
 
 l_imageURL = ''
 
@@ -41,6 +43,7 @@ def generate_text():
 
         l_UCMDocId = 0
         l_img_b64 = ''
+        l_tables = ''
         # Get JSON payload from the request
         data = request.get_json()
         user_session = data.get('usersession')
@@ -58,10 +61,12 @@ def generate_text():
       
         if l_intent == "**SalesData**":
       
-            l_generated_SQL = generate_SQL(input_text,COHERE_API_KEY)
+            l_generated_SQL,l_tables = generate_SQL(input_text,COHERE_API_KEY)
         
             print(l_generated_SQL)
+            print(l_tables)
             
+                      
             l_graph_response = check_graphtype(input_text,l_generated_SQL,COHERE_API_KEY)
             
             l_graph_type, l_description = l_graph_response.split(" | ", 1)
@@ -70,40 +75,7 @@ def generate_text():
 
             print('Here3')
 
-            l_output_data = execute_query(l_validated_output)
 
-            #print('Here4')
-
-            l_sanitized_output = sanitize_text(l_output_data)
-
-            print(l_sanitized_output)
-
-            #l_delete_sts = delete_UCMfile(l_UCMDocId)
-            l_delete_sts = 'OK'
-
-            l_dataURL = generate_excel(user_session,l_sanitized_output,l_validated_output,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
-            
-            if (l_graph_type == '**VerticalBarGraph**'):
-        
-                l_imageURL = gen_bargraph_script(l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
-
-            if (l_graph_type == '**LineChart**'):
-                    
-                l_imageURL = gen_linechart_script(input_text,l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD)
-
-            if (l_graph_type == '**GraphNotApplicable**'):            
-                l_imageURL = ''
-
-            # Return the result along with the user session and input text
-            return jsonify({
-                'usersession': user_session,
-                'inputtext':input_text,
-                'generated_sql': l_validated_output,
-                'DataURL' : l_dataURL,
-                'UCMdelSts' : l_delete_sts,
-                'ImageURL' : l_imageURL,
-                'ResponseText' : l_description
-            })
         
         elif l_intent == "**BillingData**":
             print("Processing Billingdata...")
@@ -116,7 +88,50 @@ def generate_text():
                 'UCMDocId' : '',
                 'UCMdelSts' : ''
             })
+ 
+
+
+        #l_output_data = execute_query(l_validated_output)
             
+        l_output_data = get_ERP_data(l_generated_SQL,"ORDER_DATA.sql",APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
+
+        print('Here4')
+
+        l_sanitized_output = sanitize_text(l_output_data)
+            
+        print('Here5')
+
+        print(l_sanitized_output)
+
+        #l_delete_sts = delete_UCMfile(l_UCMDocId)
+        l_delete_sts = 'OK'
+
+        l_dataURL = generate_excel(user_session,l_sanitized_output,l_validated_output,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
+            
+        if (l_graph_type == '**VerticalBarGraph**'):
+       
+            l_imageURL = gen_bargraph_script(l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
+
+        if (l_graph_type == '**LineChart**'):
+                   
+            l_imageURL = gen_linechart_script(input_text,l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
+
+        if (l_graph_type == '**GraphNotApplicable**'):            
+            l_imageURL = ''
+
+        # Return the result along with the user session and input text
+        return jsonify({
+            'usersession': user_session,
+            'inputtext':input_text,
+            'generated_sql': l_validated_output,
+            'DataURL' : l_dataURL,
+            'UCMdelSts' : l_delete_sts,
+            'ImageURL' : l_imageURL,
+            'ResponseText' : l_description
+        })
+
+
+ 
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

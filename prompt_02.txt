@@ -142,6 +142,7 @@ You are supposed to answer queries based on the table ORDER_DATA.
 - Generate the query without any additional explanations or verbiage.
 - Do not include new line character (\n) or any other formatting characters within the generated SQL.
 - Do not include the terminating semi-colon in the generated SQL statement.
+- In the response, include the names of the tables used in the query concatenated after the query text, seperated by ~ delimiter. An example of the complete response should look like : SELECT a.ABC,b.XYZ FROM ORDER_DATA a,HOLD_DATA b WHERE a.ORDER_ID=b.ORDER_ID~ORDER_DATA~HOLD_DATA
 
 With these instructions, generate the SQL statement for the following user query:
 

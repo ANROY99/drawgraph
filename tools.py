@@ -12,6 +12,7 @@ from urllib.parse import unquote
 import sys
 import subprocess
 import matplotlib
+import xmltodict
 
 l_did = 0
 
@@ -105,7 +106,11 @@ def generate_SQL(input_text,p_api_key):
     )
 
     generated_SQL = response.message.content[0].text.strip()
-    return generated_SQL
+    l_tables = generated_SQL.split('~', 1)[1]
+    generated_SQL = generated_SQL.split('~')[0]
+    
+
+    return generated_SQL,l_tables
 
 
 def validate_output(input_text,p_api_key):
@@ -159,53 +164,75 @@ def execute_query(p_in_query):
     extracted_data = (data.decode("utf-8"))
     return extracted_data
 
-def generate_excel(p_in_user_session,p_in_result,p_in_sql_text,p_in_basicauth,p_in_uname,p_in_pwd):
+def generate_excel(p_in_user_session,p_in_result,p_in_sql_text,p_in_basicauth,p_in_uname,p_in_pwd,p_in_podurl):
 
     UCMDocId = ''
+    print("Here5a")
     
-    # Parse the string into a Python list of dictionaries
-    order_list = json.loads(p_in_result)
+    # Check if p_in_result is empty or None
+    if not p_in_result:
+        print("p_in_result is empty ot None")
+        order_list = []  # Empty list to create an empty DataFrame
+    else:
+        # Parse the string into a Python list of dictionaries
+        parsed_data = json.loads(p_in_result)
+        order_list = [parsed_data] if isinstance(parsed_data, dict) else parsed_data
+        print("Here5b")
 
+    # If order_list is None (which shouldn't happen with the above check), set it to an empty list
+    if order_list is None:
+        print("Here5c")
+        order_list = []
 
     # Convert to a DataFrame
+    print("Here5d")
+    print(order_list)
     df = pd.DataFrame(order_list)
 
-    l_filename = "ORDdata_"+str(p_in_user_session)+".xlsx"
-
+    l_filename = "ORDdata_" + str(p_in_user_session) + ".xlsx"
 
     # Save to Excel
-    #df.to_excel(l_filename,sheet_name='Result', index=False)
-
     with pd.ExcelWriter(l_filename) as writer:
+        print("Here5e")
+        # If the DataFrame is empty, ensure it has the correct columns
+        if df.empty and p_in_result:
+            print("Here5f")
+            # Extract column names from the first dictionary in the list (if available)
+            sample_dict = order_list[0] if order_list else {}
+            print("Here5g")
+            df = pd.DataFrame(columns=sample_dict.keys())
+            print("Here5h")
         df.to_excel(writer, sheet_name="Data", index=False)
+        print("Here5i")
+        
         # Put SQL text in a DataFrame so it can be written as a single-column sheet
+        print("Here5j")
         pd.DataFrame([p_in_sql_text]).to_excel(writer, sheet_name="SQL", index=False, header=False)
+        print("Here5k")
 
     with open(l_filename, "rb") as file:
         encoded_bytes = base64.b64encode(file.read())
     
-    UCMDocId = upload_result(encoded_bytes.decode("utf-8"),l_filename,p_in_basicauth,p_in_uname,p_in_pwd)
+    UCMDocId = upload_result(encoded_bytes.decode("utf-8"), l_filename, p_in_basicauth, p_in_uname, p_in_pwd,p_in_podurl)
 
-    did = UCMDocId
- 
     return UCMDocId
 
 
-def upload_result(p_in_base64_excel,p_in_filename,p_basic_auth,p_in_uname,p_in_pwd):
+def upload_result(p_in_base64_excel,p_in_filename,p_basic_auth,p_in_uname,p_in_pwd,p_in_podurl):
 
     #print('Here5')
 
-    l_did = check_UCMfile(p_in_filename,p_in_uname,p_in_pwd)
+    l_did = check_UCMfile(p_in_filename,p_in_uname,p_in_pwd,p_in_podurl)
     
     #print('Here6')
     
     #print(l_did)
     
     if l_did is not None:
-        l_del_response = delete_UCMfile(l_did,p_in_uname,p_in_pwd)
+        l_del_response = delete_UCMfile(l_did,p_in_uname,p_in_pwd,p_in_podurl)
         print(l_del_response)
 
-    url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/fscmRestApi/resources/11.13.18.05/erpintegrations"
+    url = p_in_podurl+"/fscmRestApi/resources/11.13.18.05/erpintegrations"
 
     payload = json.dumps({"OperationName": "uploadFileToUCM","DocumentContent":p_in_base64_excel,"DocumentAccount": "fin$/payables$/import$","ContentType": "xlsx","FileName": p_in_filename,"DocumentId": None})
     #headers = {'Content-Type': 'application/json','Authorization': 'Basic YW5pbmR5YS5yQHRjcy5jb206S29sa2F0YUA5OQ=='}
@@ -217,15 +244,15 @@ def upload_result(p_in_base64_excel,p_in_filename,p_basic_auth,p_in_uname,p_in_p
 
     document_id = json_data["DocumentId"]
     
-    l_url = get_doc_url(document_id,p_in_uname,p_in_pwd)
+    l_url = get_doc_url(document_id,p_in_uname,p_in_pwd,p_in_podurl)
 
     return (l_url)
 
 
 
-def delete_UCMfile(did,p_in_uname,p_in_pwd):
+def delete_UCMfile(did,p_in_uname,p_in_pwd,p_in_podurl):
     
-    url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/idcws/GenericSoapPort"
+    url = p_in_podurl+"/idcws/GenericSoapPort"
     headers = {
         "Content-Type": "text/xml; charset=utf-8"
     }
@@ -256,11 +283,11 @@ def delete_UCMfile(did,p_in_uname,p_in_pwd):
     }
 
 
-def check_UCMfile(p_in_filename,p_in_uname,p_in_pwd):
+def check_UCMfile(p_in_filename,p_in_uname,p_in_pwd,p_in_podurl):
 
     did = None
     
-    url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/idcws/GenericSoapPort"
+    url = p_in_podurl+"/idcws/GenericSoapPort"
     l_filedID = 0
     headers = {
         "Content-Type": "text/xml; charset=utf-8"
@@ -331,9 +358,9 @@ def check_UCMfile(p_in_filename,p_in_uname,p_in_pwd):
     # Return response status and content
     return did
 
-def get_doc_url(p_in_did,p_in_uname,p_in_pwd):
+def get_doc_url(p_in_did,p_in_uname,p_in_pwd,p_in_podurl):
     # SOAP API endpoint
-    url = "https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com/idcws/GenericSoapPort"
+    url = p_in_podurl+"/idcws/GenericSoapPort"
     
     # SOAP request payload template
     payload_template = """
@@ -388,7 +415,7 @@ def get_doc_url(p_in_did,p_in_uname,p_in_pwd):
         
         if doc_url is not None:
             decoded_url = unquote(doc_url.text)
-            new_prefix = 'https://fa-eqju-test-saasfaprod1.fa.ocs.oraclecloud.com'
+            new_prefix = p_in_podurl
             common_path_start = decoded_url.find('/cs/groups/fafusionimportexport/')
             if common_path_start != -1:
                 decoded_url = new_prefix + decoded_url[common_path_start:]
@@ -511,3 +538,121 @@ def gen_linechart_script(p_in_userquery,p_in_result,p_in_user_session,p_api_key,
     print(UCMurl)
     
     return (UCMurl)
+    
+def get_ERP_data(p_in_gen_qry,p_in_base_query,p_in_uname,p_in_pwd,p_in_podurl):
+    
+    """Read the base query from a local file."""
+    
+    l_base_query = get_base_prompt(p_in_base_query)
+    
+    l_sql_query = p_in_gen_qry.replace("ORDER_DATA", f"({l_base_query})")
+    
+    l_query_bytes = l_sql_query.encode('utf-8')
+    
+    l_base64_query = base64.b64encode(l_query_bytes)
+    
+    # The following statement is only for printing
+    
+    l_base64_query_str = l_base64_query.decode('utf-8')
+    
+    print("Here 4a")
+    print(p_in_podurl)
+    
+    # SOAP API endpoint
+    url = p_in_podurl+"/xmlpserver/services/v2/ReportService"
+    
+    payload_template = """
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">
+                      <soapenv:Header>
+                      </soapenv:Header>
+                         <soapenv:Body>
+                            <v2:runReport>
+                              <v2:reportRequest>
+                                  <v2:attributeFormat>xml</v2:attributeFormat>
+                                  <v2:parameterNameValues>
+                                     <v2:listOfParamNameValues>
+                                       <!--Zero or more repetitions:-->
+                                        <v2:item>
+                                          <v2:name>query1</v2:name>
+                                          <v2:values>
+                                             <v2:item>{b64_qry}</v2:item>
+                                          </v2:values>
+                                       </v2:item>
+                                     </v2:listOfParamNameValues>
+                                  </v2:parameterNameValues>
+                                 <v2:reportAbsolutePath>/Custom/CRYSTLS/SQL_INJ_REP.xdo</v2:reportAbsolutePath>
+                                 <v2:reportRawData/>
+                                 <v2:sizeOfDataChunkDownload>-1</v2:sizeOfDataChunkDownload>
+                             </v2:reportRequest>
+                             <v2:userID>{uid}</v2:userID>
+                             <v2:password>{pwd}</v2:password>
+                           </v2:runReport>
+                         </soapenv:Body>
+                       </soapenv:Envelope>
+    """
+    
+    payload = payload_template.format(b64_qry=l_base64_query_str,uid=p_in_uname,pwd=p_in_pwd)
+    
+    #print(payload)
+    
+    # Headers for SOAP request
+    headers = {
+        "Content-Type": "text/xml; charset=utf-8"
+    }
+    
+    
+    try:
+        # Send SOAP request
+        soap_response = requests.post(url, data=payload, headers=headers, auth=(p_in_uname,p_in_pwd))
+        
+
+        response_str = (soap_response.content).decode()
+
+        
+        start_pos = response_str.find('<reportBytes>')
+        end_pos = response_str.find('</reportBytes>')
+        
+        response_msg = response_str[start_pos+13:end_pos]
+        l_b64_bytes = base64.b64decode(response_msg)
+
+        
+        data_start_pos = (l_b64_bytes.decode()).find('<ROW>')
+        data_end_pos = (l_b64_bytes.decode()).find('</ROWSET>')
+        
+ 
+        xml_data = l_b64_bytes[data_start_pos:data_end_pos].decode()
+        
+        
+        xml_data = '<ROOT>'+xml_data+'</ROOT>'
+        
+        
+        # Parse XML to dictionary
+        data_dict = xmltodict.parse(xml_data)
+        
+        
+        # Convert dictionary to JSON
+        json_data = json.dumps(data_dict, indent=4)
+        
+        data = json.loads(json_data)
+        
+     
+        flat_list = []
+        if data.get("ROOT") is not None and "ROW" in data["ROOT"]:
+           flat_list = data["ROOT"]["ROW"]
+        
+        result_json = json.dumps(flat_list, indent=4)
+             
+        
+        
+        #print(result_json)
+        
+    
+    except requests.RequestException as e:
+        print(f"Error invoking SOAP API: {e}")
+        return None
+    
+    return(result_json)
+    
+    
+        
+     
