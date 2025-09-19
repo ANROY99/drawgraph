@@ -539,13 +539,11 @@ def gen_linechart_script(p_in_userquery,p_in_result,p_in_user_session,p_api_key,
     
     return (UCMurl)
     
-def get_ERP_data(p_in_gen_qry,p_in_base_query,p_in_uname,p_in_pwd,p_in_podurl):
+def get_ERP_data(p_in_gen_qry,p_in_uname,p_in_pwd,p_in_podurl):
     
     """Read the base query from a local file."""
     
-    l_base_query = get_base_prompt(p_in_base_query)
-    
-    l_sql_query = p_in_gen_qry.replace("ORDER_DATA", f"({l_base_query})")
+    l_sql_query = p_in_gen_qry
     
     l_query_bytes = l_sql_query.encode('utf-8')
     

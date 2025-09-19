@@ -55,45 +55,13 @@ def generate_text():
         if not input_text:
             return jsonify({'error': 'Missing "input_text" in payload'}), 400
 
-        l_intent = check_intent(input_text,COHERE_API_KEY)
+
+
       
-        print(l_intent)
-      
-        if l_intent == "**SalesData**":
-      
-            l_generated_SQL,l_tables = generate_SQL(input_text,COHERE_API_KEY)
+        l_generated_SQL = input_text
         
-            print(l_generated_SQL)
-            print(l_tables)
             
-                      
-            l_graph_response = check_graphtype(input_text,l_generated_SQL,COHERE_API_KEY)
-            
-            l_graph_type, l_description = l_graph_response.split(" | ", 1)
-        
-            l_validated_output = sanitize_text(l_generated_SQL)
-
-            print('Here3')
-
-
-        
-        elif l_intent == "**BillingData**":
-            print("Processing Billingdata...")
-        else:
-            print("Unknown intent. Please check the value of l_intent.")
-            return jsonify({
-                'usersession': user_session,
-                'inputtext':'At present, the tool can handle only Sales Data or Billing Data related queries' ,
-                'generated_sql': '',
-                'UCMDocId' : '',
-                'UCMdelSts' : ''
-            })
- 
-
-
-        #l_output_data = execute_query(l_validated_output)
-            
-        l_output_data = get_ERP_data(l_generated_SQL,"ORDER_DATA.sql",APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
+        l_output_data = get_ERP_data(l_generated_SQL,APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
 
         print('Here4')
 
@@ -103,31 +71,12 @@ def generate_text():
 
         print(l_sanitized_output)
 
-        #l_delete_sts = delete_UCMfile(l_UCMDocId)
-        l_delete_sts = 'OK'
-
-        l_dataURL = generate_excel(user_session,l_sanitized_output,l_validated_output,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
-            
-        if (l_graph_type == '**VerticalBarGraph**'):
-       
-            l_imageURL = gen_bargraph_script(l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
-
-        if (l_graph_type == '**LineChart**'):
-                   
-            l_imageURL = gen_linechart_script(input_text,l_sanitized_output,user_session,COHERE_API_KEY,APPS_BASICAUTH,APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
-
-        if (l_graph_type == '**GraphNotApplicable**'):            
-            l_imageURL = ''
 
         # Return the result along with the user session and input text
         return jsonify({
             'usersession': user_session,
             'inputtext':input_text,
-            'generated_sql': l_validated_output,
-            'DataURL' : l_dataURL,
-            'UCMdelSts' : l_delete_sts,
-            'ImageURL' : l_imageURL,
-            'ResponseText' : l_description
+            'ResponseText' : l_sanitized_output
         })
 
 
@@ -137,29 +86,11 @@ def generate_text():
         return jsonify({'error': str(e)}), 500
         
         
-@app.route('/getimage', methods=['POST'])
-def getimage():
 
-    try:
-        data = request.get_json()
-        user_session = data.get('usersession')
-        image_path = 'ORDI'+str(user_session)+'.jpg'
-        
-        with open(image_path, "rb") as image_file:
-            image_data = image_file.read()
-        
-        return Response(
-                image_data,
-                mimetype='image/jpg',
-                headers={'Content-Disposition': f'inline; filename={image_path}'}
-            )
-        
-        
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == "__main__":
 #    app.run(debug=True, host='0.0.0.0', port=5000)
      app.run()
+
+
