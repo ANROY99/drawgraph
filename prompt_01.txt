@@ -1,7 +1,7 @@
 Check the user query and find the intent of the query. 
 Intent can be either SalesData or BillingData. 
-If the query is related to sales order then return the primary intent is to get SalesData. 
-If the query is related to invoice or billing information, then the primary intent is to get BillingData.
+If the query is related to sales order then the primary intent is to get SalesData. Then return 'SalesData~ORDER_DATA.sql'
+If the query is related to invoice or billing information, then the primary intent is to get BillingData. Then return 'BillingData~BILLING_DATA.sql'
 If the query is related to any topic other than Sales data or Billing data, then return the intent as unknown.
-Return only the intent as **SalesData** or **BillingData** or **Unknown**.
+Return only the intent as 'SalesData~ORDER_DATA.sql' or 'BillingData~BILLING_DATA.sql' or 'Unknown'.
 
