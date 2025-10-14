@@ -660,9 +660,123 @@ def get_ERP_data_final(p_in_gen_qry,p_in_uname,p_in_pwd,p_in_podurl):
     
     l_sql_query = p_in_gen_qry
     
-
+    BASE_PROMPT_FILE_PATH = 'ORDER_DATA.sql'
+    l_ORDER_DATA_sql = get_base_prompt(BASE_PROMPT_FILE_PATH)
     
-    return(l_sql_query)
+    l_sql_query = l_sql_query.replace("ORDER_DATA",l_ORDER_DATA_sql)
+    
+    BASE_PROMPT_FILE_PATH = 'ACTIVE_HOLD_DATA.sql'
+    l_ACTIVE_HOLD_DATA_sql = get_base_prompt(BASE_PROMPT_FILE_PATH)
+    l_sql_query = l_sql_query.replace("ACTIVE_HOLD_DATA",l_ACTIVE_HOLD_DATA_sql)
+    
+    print(l_sql_query)
+    
+    l_query_bytes = l_sql_query.encode('utf-8')
+    
+    l_base64_query = base64.b64encode(l_query_bytes)
+    
+    # The following statement is only for printing
+    
+    l_base64_query_str = l_base64_query.decode('utf-8')
+    
+    print("Here 4a")
+    print(p_in_podurl)
+    
+    # SOAP API endpoint
+    url = p_in_podurl+"/xmlpserver/services/v2/ReportService"
+    
+    payload_template = """
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">
+                      <soapenv:Header>
+                      </soapenv:Header>
+                         <soapenv:Body>
+                            <v2:runReport>
+                              <v2:reportRequest>
+                                  <v2:attributeFormat>xml</v2:attributeFormat>
+                                  <v2:parameterNameValues>
+                                     <v2:listOfParamNameValues>
+                                       <!--Zero or more repetitions:-->
+                                        <v2:item>
+                                          <v2:name>query1</v2:name>
+                                          <v2:values>
+                                             <v2:item>{b64_qry}</v2:item>
+                                          </v2:values>
+                                       </v2:item>
+                                     </v2:listOfParamNameValues>
+                                  </v2:parameterNameValues>
+                                 <v2:reportAbsolutePath>/Custom/CRYSTLS/SQL_INJ_REP.xdo</v2:reportAbsolutePath>
+                                 <v2:reportRawData/>
+                                 <v2:sizeOfDataChunkDownload>-1</v2:sizeOfDataChunkDownload>
+                             </v2:reportRequest>
+                             <v2:userID>{uid}</v2:userID>
+                             <v2:password>{pwd}</v2:password>
+                           </v2:runReport>
+                         </soapenv:Body>
+                       </soapenv:Envelope>
+    """
+    
+    payload = payload_template.format(b64_qry=l_base64_query_str,uid=p_in_uname,pwd=p_in_pwd)
+    
+    print(payload)
+    
+    # Headers for SOAP request
+    headers = {
+        "Content-Type": "text/xml; charset=utf-8"
+    }
+    
+    
+    try:
+        # Send SOAP request
+        soap_response = requests.post(url, data=payload, headers=headers, auth=(p_in_uname,p_in_pwd))
+        
+
+        response_str = (soap_response.content).decode()
+
+        print(response_str)
+        
+        start_pos = response_str.find('<reportBytes>')
+        end_pos = response_str.find('</reportBytes>')
+        
+        response_msg = response_str[start_pos+13:end_pos]
+        l_b64_bytes = base64.b64decode(response_msg)
+
+        
+        data_start_pos = (l_b64_bytes.decode()).find('<ROW>')
+        data_end_pos = (l_b64_bytes.decode()).find('</ROWSET>')
+        
+ 
+        xml_data = l_b64_bytes[data_start_pos:data_end_pos].decode()
+        
+        
+        xml_data = '<ROOT>'+xml_data+'</ROOT>'
+        
+        
+        # Parse XML to dictionary
+        data_dict = xmltodict.parse(xml_data)
+        
+        
+        # Convert dictionary to JSON
+        json_data = json.dumps(data_dict, indent=4)
+        
+        data = json.loads(json_data)
+        
+     
+        flat_list = []
+        if data.get("ROOT") is not None and "ROW" in data["ROOT"]:
+           flat_list = data["ROOT"]["ROW"]
+        
+        result_json = json.dumps(flat_list, indent=4)
+             
+        
+        
+        #print(result_json)
+        
+    
+    except requests.RequestException as e:
+        print(f"Error invoking SOAP API: {e}")
+        return None
+    
+    return(result_json)
     
     
         

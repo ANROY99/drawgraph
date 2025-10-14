@@ -1,4 +1,4 @@
-SELECT
+(SELECT
 E.Source_Order_Number AS ORDER_NUM,
 E.Header_ID  AS HDR_ID,
 F.Line_id  AS LINE_ID ,
@@ -61,4 +61,4 @@ OR
             )
 
 
-)
+)) 
