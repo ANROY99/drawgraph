@@ -14,6 +14,7 @@ from tools import check_graphtype
 from tools import gen_bargraph_script
 from tools import gen_linechart_script
 from tools import get_ERP_data
+from tools import get_ERP_data_final
 import pandas as pd
 import openpyxl
 from openpyxl import Workbook
@@ -59,13 +60,15 @@ def generate_text():
 
       
         l_generated_SQL = input_text
+
         
             
-        l_output_data = get_ERP_data(l_generated_SQL,APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
+        l_output_data = get_ERP_data_final(l_generated_SQL,APPS_USERNAME,APPS_PASSWORD,APPS_PODURL)
 
         print('Here4')
 
         l_sanitized_output = sanitize_text(l_output_data)
+ 
             
         print('Here5')
 

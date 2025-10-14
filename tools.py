@@ -654,3 +654,16 @@ def get_ERP_data(p_in_gen_qry,p_in_uname,p_in_pwd,p_in_podurl):
     
         
      
+def get_ERP_data_final(p_in_gen_qry,p_in_uname,p_in_pwd,p_in_podurl):
+    
+    """Read the base query from a local file."""
+    
+    l_sql_query = p_in_gen_qry
+    
+
+    
+    return(l_sql_query)
+    
+    
+        
+     
