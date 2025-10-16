@@ -671,7 +671,11 @@ def get_ERP_data_final(p_in_gen_qry,p_in_uname,p_in_pwd,p_in_podurl):
     
     BASE_PROMPT_FILE_PATH = 'ONLINE_ORDER_ORCH_DATA.sql'
     l_ONLINE_ORDER_ORCH_DATA_sql = get_base_prompt(BASE_PROMPT_FILE_PATH)
-    l_sql_query = l_sql_query.replace("ONLINE_ORDER_ORCH_DATA",l_ONLINE_ORDER_ORCH_DATA_sql)    
+    l_sql_query = l_sql_query.replace("ONLINE_ORDER_ORCH_DATA",l_ONLINE_ORDER_ORCH_DATA_sql) 
+
+    BASE_PROMPT_FILE_PATH = 'ORDER_ERROR_DATA.sql'
+    l_ORDER_ERROR_DATA_sql = get_base_prompt(BASE_PROMPT_FILE_PATH)
+    l_sql_query = l_sql_query.replace("ORDER_ERROR_DATA",l_ORDER_ERROR_DATA_sql)     
     
     print(l_sql_query)
     
